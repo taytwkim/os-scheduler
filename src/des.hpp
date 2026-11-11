@@ -1,6 +1,6 @@
 #pragma once
 
-#include "scheduler.hpp"
+#include <list>
 
 enum State {
     CREATED,
@@ -14,26 +14,20 @@ enum Transition {
     RUNNING_TO_READY,
     BLOCKED_TO_READY,
     READY_TO_RUNNING,
-    RUNNING_TO_BLOCKED
+    RUNNING_TO_BLOCKED,
 };
 
-struct Event {
-    Process *process;
-    Transition transition;
-    int timestamp;
-
-    Event(Process *proc, Transition transition, int timestamp)
-        : process(proc),
-          transition(transition),
-          timestamp(timestamp) {}
-};
+std::string transition_to_string(Transition t);
+struct Event;
 
 class DES {
 private:
-    std::vector<Event *> eventQ;
+    std::list<Event*> eventQ;
 
 public:
     Event *get_event();
-    void put_event();
-    void rm_event();
+    void put_event(Event *event);
+    // void rm_event();
+    int get_next_event_time();
+    // void print_eventQ();
 };
