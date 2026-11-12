@@ -1,6 +1,8 @@
 #pragma once
 
 #include <list>
+#include <memory>
+#include <string>
 
 enum State {
     CREATED,
@@ -22,12 +24,14 @@ struct Event;
 
 class DES {
 private:
-    std::list<Event*> eventQ;
+    std::list<std::unique_ptr<Event>> eventQ;
 
 public:
-    Event *get_event();
-    void put_event(Event *event);
+    DES();
+    ~DES();
+    std::unique_ptr<Event> get_event();
+    void put_event(std::unique_ptr<Event> event);
     // void rm_event();
-    int get_next_event_time();
+    int get_next_event_timestamp();
     // void print_eventQ();
 };

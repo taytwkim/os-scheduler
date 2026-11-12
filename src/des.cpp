@@ -1,8 +1,12 @@
 #include "des.hpp"
 
 #include <iostream>
+#include <utility>
 
 #include "event.hpp"
+
+DES::DES() = default;
+DES::~DES() = default;
 
 std::string transition_to_string(Transition t) {
     switch (t) {
@@ -15,17 +19,17 @@ std::string transition_to_string(Transition t) {
     return "UNKNOWN";
 }
 
-Event* DES::get_event() {
+std::unique_ptr<Event> DES::get_event() {
     if (eventQ.empty()) {
         return nullptr;
     }
 
-    Event* evt = eventQ.front();
+    auto evt = std::move(eventQ.front());
     eventQ.pop_front();
     return evt;
 }
 
-void DES::put_event(Event *event) {
+void DES::put_event(std::unique_ptr<Event> event) {
     auto it = eventQ.begin();
 
     while (it != eventQ.end() &&
@@ -33,7 +37,7 @@ void DES::put_event(Event *event) {
         ++it;
     }
 
-    eventQ.insert(it, event);
+    eventQ.insert(it, std::move(event));
 }
 
 // void DES::rm_event() {
@@ -50,11 +54,11 @@ void DES::put_event(Event *event) {
 //     }
 // }
 
-int DES::get_next_event_time() {
+int DES::get_next_event_timestamp() {
     if (eventQ.empty()) {
         return -1;
     }
 
-    Event* evt = eventQ.front();
+    const auto& evt = eventQ.front();
     return evt->timestamp;
 }

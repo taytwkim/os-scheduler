@@ -13,13 +13,13 @@
 #include "event.hpp"
 #include "scheduler.hpp"
 
-std::unique_ptr<Scheduler> SCHEDULER;
-DES Simulator;
+std::unique_ptr<Scheduler> SCHEDULER;   // Abstract class, has to be a pointer
+DES SIMULATOR;
+std::vector<std::unique_ptr<Process>> PROCESSES;
 Process *CURR_RUNNING_PROCESS;
-std::vector<Process *> PROCESSES;
 
-int quantum = 10000;
-int max_prio = 4;
+int quantum = 10000;    // default
+int max_prio = 4;       // default
 char *inputFileName;
 char *randFileName;
 bool verbose = false;
@@ -27,8 +27,9 @@ std::string sched_type;
 
 std::vector<int> randVals; 
 int numRandVals;
-int randOffset;
+int randIndex;
 
+// Read rfile and store random numbers in a vector.
 void parseRandomFile()
 {
     std::ifstream file(randFileName);
@@ -42,13 +43,17 @@ void parseRandomFile()
     }
 }
 
+// Get next random number, wrap around if necessary.
 int myrandom(int burst) 
 {
-    int val = 1 + (randVals[randOffset % numRandVals] % burst);
-    ++randOffset;
+    int val = 1 + (randVals[randIndex % numRandVals] % burst);
+    ++randIndex;
     return val;
 }
 
+// Read input file.
+// There is one process per line. 
+// Create a Process object and a CREATED -> READY event.
 void parseInputFile()
 {
     std::ifstream file(inputFileName);
@@ -66,75 +71,90 @@ void parseInputFile()
             processData.push_back(std::stoi(value));
         }
 
+        // Compute random priority.
         int prio = myrandom(max_prio);
 
-        Process *proc = new Process(pid, processData[0], 
-            processData[1], processData[2], processData[3], prio);
+        PROCESSES.push_back(std::make_unique<Process>(pid, processData[0],
+            processData[1], processData[2], processData[3], prio));
         
-        PROCESSES.push_back(proc);
+        Process *proc = PROCESSES.back().get();
         ++pid;
         
-        Event *evt = new Event(proc, CREATED_TO_READY, processData[0]);
-        Simulator.put_event(evt);
+        SIMULATOR.put_event(std::make_unique<Event>(
+            proc, CREATED_TO_READY, processData[0]));
     }
 }
 
 void Simulation()
 {
-    Event* evt;
-    int current_timestamp;
+    int current_timestamp;  // Timestamp of the current event.
 
-    int num_io = 0;
-    int io_start_timestamp = 0;
-    int io_busy_time = 0;
+    // Needed to account for IO utilization.
+    int num_io = 0;                 // How many processes are currently performing IO.
+    int io_start_timestamp = 0;     // Time since at least one process is performing IO.
+    int io_busy_time = 0;           // Time where at least one process is performing IO.
+
+    // We first look at the next event.
+    // Some events set call_scheduler to true
+    // so that the scheduler can decide whether to
+    // schedule a new process.
     bool call_scheduler = false;
 
-    while ((evt = Simulator.get_event())) {
+    while (auto evt = SIMULATOR.get_event()) {
         Process* proc = evt->proc;
         current_timestamp = evt->timestamp;
         int transition = evt->transition;
-        int timeInPrevState = current_timestamp - proc->state_start_time;
-        proc->state_start_time = current_timestamp;
+        int timeInPrevState = current_timestamp - proc->curr_state_start_time;
+        proc->curr_state_start_time = current_timestamp;
 
-        delete evt;
-        evt = nullptr;
-
-        std::cout << current_timestamp << " "
+        if (verbose) {
+            std::cout << current_timestamp << " "
                 << proc->pid << " "
                 << std::setfill(' ') << std::setw(2) << timeInPrevState
                 << ": ";
+        }
         
         switch (transition) {
             case CREATED_TO_READY: {
-                std::cout << "CREATED -> READY\n";
                 SCHEDULER->add_process(proc);
                 call_scheduler = true;
+
+                if (verbose) {
+                    std::cout << "CREATED -> READY\n";
+                }
+                
                 break;
             }
             case RUNNING_TO_READY: {                
                 SCHEDULER->add_process(proc);
+                call_scheduler = true;
 
-                std::cout << "RUNNG -> READY"
+                if (verbose) {
+                    std::cout << "RUNNG -> READY"
                         << "  cb=" << proc->curr_cpu_burst
                         << " rem=" << proc->remaining_cpu_time
                         << " prio=" << proc->dynamic_prio
                         << '\n';
+                }
 
-                call_scheduler = true;
                 break;
             }
             case BLOCKED_TO_READY: {
-                std::cout << "BLOCK -> READY\n";
                 proc->io_time = proc->io_time + timeInPrevState;
                 SCHEDULER->add_process(proc);
                 call_scheduler = true;
-
+                
+                // IO is idle.
                 if (num_io == 1) {
                     int time = current_timestamp - io_start_timestamp;
                     io_busy_time += time;
                 }
 
                 --num_io;
+
+                if (verbose) {
+                    std::cout << "BLOCK -> READY\n";
+                }
 
                 break;
             }
@@ -147,15 +167,16 @@ void Simulation()
                 );
 
                 proc->curr_cpu_burst = burst;
-                Event *evt = new Event(proc, RUNNING_TO_BLOCKED,
-                     current_timestamp + burst);
-                Simulator.put_event(evt);
+                SIMULATOR.put_event(std::make_unique<Event>(
+                    proc, RUNNING_TO_BLOCKED, current_timestamp + burst));
 
-                std::cout << "READY -> RUNNG"
+                if (verbose) {
+                    std::cout << "READY -> RUNNG"
                         << " cb=" << proc->curr_cpu_burst
                         << " rem=" << proc->remaining_cpu_time
                         << " prio=" << proc->dynamic_prio
                         << '\n';
+                }
                 
                 break;
             }
@@ -166,26 +187,31 @@ void Simulation()
                 if (proc->remaining_cpu_time == 0) {
                     proc->finish_time = current_timestamp;
                     proc->turnaround_time = current_timestamp - proc->arrival_time;
-                    std::cout << "DONE\n";
+
+                    if (verbose) {
+                        std::cout << "DONE\n";
+                    }
                 } 
                 else {
-                    int burst = myrandom(proc->max_io_burst);
-                    proc->curr_io_burst = burst;
+                    int io_burst = myrandom(proc->max_io_burst);
+                    proc->curr_io_burst = io_burst;
 
-                    Simulator.put_event(new Event(
-                        proc, BLOCKED_TO_READY, current_timestamp + burst
+                    SIMULATOR.put_event(std::make_unique<Event>(
+                        proc, BLOCKED_TO_READY, current_timestamp + io_burst
                     ));
 
-                    std::cout << "RUNNG -> BLOCK"
-                            << " ib=" << proc->curr_io_burst
-                            << " rem=" << proc->remaining_cpu_time
-                            << '\n';
-                    
                     if (num_io == 0) {
                         io_start_timestamp = current_timestamp;
                     }
 
                     ++num_io;
+
+                    if (verbose) {
+                        std::cout << "RUNNG -> BLOCK"
+                            << " ib=" << proc->curr_io_burst
+                            << " rem=" << proc->remaining_cpu_time
+                            << '\n';
+                    }
                 }
 
                 call_scheduler = true;
@@ -194,12 +220,15 @@ void Simulation()
         }
 
         if (call_scheduler) {
-            if (Simulator.get_next_event_time() == current_timestamp) {
+            if (SIMULATOR.get_next_event_timestamp() == current_timestamp) {
+                // if there are more events scheduled at the current timestamp,
+                // process them first before scheduling a new process.
+                // Note that call_scheduler is not reset here.
                 continue;
             }
 
             call_scheduler = false;
-
+            
             if (CURR_RUNNING_PROCESS == nullptr) {
                 CURR_RUNNING_PROCESS = SCHEDULER->get_next_process();
 
@@ -207,10 +236,9 @@ void Simulation()
                     continue;
                 }
 
-                Event *evt = new Event(CURR_RUNNING_PROCESS,
-                     READY_TO_RUNNING, current_timestamp);
-                
-                Simulator.put_event(evt);
+                // New READY -> RUNNING event.
+                SIMULATOR.put_event(std::make_unique<Event>(
+                    CURR_RUNNING_PROCESS, READY_TO_RUNNING, current_timestamp));
             }
         }
     }
@@ -221,7 +249,7 @@ void Simulation()
     int total_turnaround_time = 0;
     int total_wait_time = 0;
 
-    for (Process *p : PROCESSES) {
+    for (const auto& p : PROCESSES) {
         p->print_process_stats();
         cpu_busy_time += p->total_cpu_time;
         total_turnaround_time += p->turnaround_time;

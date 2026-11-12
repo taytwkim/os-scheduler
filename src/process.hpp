@@ -12,7 +12,7 @@ struct Process {
     int max_io_burst;
     int static_prio;
 
-    int state_start_time;
+    int curr_state_start_time;
     int remaining_cpu_time;
     int curr_cpu_burst;
     int curr_io_burst;
@@ -30,7 +30,7 @@ struct Process {
           max_cpu_burst(cpu),
           max_io_burst(io),
           static_prio(static_prio),
-          state_start_time(arrival),
+          curr_state_start_time(arrival),
           remaining_cpu_time(total_cpu_time),
           dynamic_prio(static_prio-1){}
 
