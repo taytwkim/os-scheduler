@@ -13,7 +13,7 @@
 #include "event.hpp"
 #include "scheduler.hpp"
 
-std::unique_ptr<Scheduler> SCHEDULER;   // Abstract class, has to be a pointer
+std::unique_ptr<Scheduler> SCHEDULER;
 DES SIMULATOR;
 std::vector<std::unique_ptr<Process>> PROCESSES;
 Process *CURR_RUNNING_PROCESS;
@@ -44,7 +44,7 @@ void parseRandomFile()
 }
 
 // Get next random number, wrap around if necessary.
-int myrandom(int burst) 
+int myrandom(int burst)
 {
     int val = 1 + (randVals[randIndex % numRandVals] % burst);
     ++randIndex;
@@ -78,6 +78,7 @@ void parseInputFile()
             processData[1], processData[2], processData[3], prio));
         
         Process *proc = PROCESSES.back().get();
+        
         ++pid;
         
         SIMULATOR.put_event(std::make_unique<Event>(
@@ -125,9 +126,11 @@ void Simulation()
                 
                 break;
             }
-            case RUNNING_TO_READY: {                
-                SCHEDULER->add_process(proc);
-                call_scheduler = true;
+            case RUNNING_TO_READY: {           
+                CURR_RUNNING_PROCESS = nullptr;
+
+                proc->remaining_cpu_time -= timeInPrevState;
+                proc->curr_cpu_burst -= timeInPrevState;
 
                 if (verbose) {
                     std::cout << "RUNNG -> READY"
@@ -137,6 +140,15 @@ void Simulation()
                         << '\n';
                 }
 
+                proc->dynamic_prio--;
+
+                if (sched_type == "RR") {
+                    proc->dynamic_prio = proc->static_prio - 1;
+                };
+
+                SCHEDULER->add_process(proc);
+                call_scheduler = true;
+                
                 break;
             }
             case BLOCKED_TO_READY: {
@@ -160,15 +172,22 @@ void Simulation()
             }
             case READY_TO_RUNNING: {
                 proc->cpu_wait_time = proc->cpu_wait_time + timeInPrevState;
-                
-                int burst = std::min(
-                    myrandom(proc->max_cpu_burst),
-                    proc->remaining_cpu_time
-                );
 
-                proc->curr_cpu_burst = burst;
-                SIMULATOR.put_event(std::make_unique<Event>(
-                    proc, RUNNING_TO_BLOCKED, current_timestamp + burst));
+                if (proc->curr_cpu_burst == 0) {
+                    proc->curr_cpu_burst = std::min(
+                        myrandom(proc->max_cpu_burst),
+                        proc->remaining_cpu_time
+                    );
+                }
+
+                if (proc->curr_cpu_burst > quantum) {
+                    SIMULATOR.put_event(std::make_unique<Event>(
+                        proc, RUNNING_TO_READY, current_timestamp + quantum));
+                }
+                else {
+                    SIMULATOR.put_event(std::make_unique<Event>(
+                        proc, RUNNING_TO_BLOCKED, current_timestamp + proc->curr_cpu_burst));
+                }
 
                 if (verbose) {
                     std::cout << "READY -> RUNNG"
@@ -183,6 +202,7 @@ void Simulation()
             case RUNNING_TO_BLOCKED: {                
                 CURR_RUNNING_PROCESS = nullptr;
                 proc->remaining_cpu_time -= timeInPrevState;
+                proc->curr_cpu_burst = 0;
 
                 if (proc->remaining_cpu_time == 0) {
                     proc->finish_time = current_timestamp;
@@ -191,7 +211,7 @@ void Simulation()
                     if (verbose) {
                         std::cout << "DONE\n";
                     }
-                } 
+                }
                 else {
                     int io_burst = myrandom(proc->max_io_burst);
                     proc->curr_io_burst = io_burst;
@@ -244,7 +264,13 @@ void Simulation()
     }
 
     // Compute and print final stats
-    std::cout << sched_type << "\n";
+    std::cout << sched_type;
+    
+    if (quantum < 10000) {
+        std::cout << " " << quantum;
+    }
+    
+    std::cout << "\n";
     
     int cpu_busy_time = 0;
     int total_turnaround_time = 0;
@@ -317,7 +343,11 @@ int main(int argc, char *argv[])
                         SCHEDULER = std::make_unique<SRTF_Scheduler>();
                         break;
                     }
-                    // case 'R': sched_type = RR; break;
+                    case 'R': {
+                        sched_type = "RR";
+                        SCHEDULER = std::make_unique<RR_Scheduler>();
+                        break;
+                    }
                     // case 'P': sched_type = PRIO; break;
                     // case 'E': sched_type = PREPRIO; break;
 

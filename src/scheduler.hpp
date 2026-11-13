@@ -10,7 +10,6 @@ public:
     virtual ~Scheduler() = default;
     virtual void add_process(Process* p) = 0;
     virtual Process* get_next_process() = 0;
-    // virtual void print_readyQ() = 0;
 };
 
 // ==================== //
@@ -23,7 +22,6 @@ public:
     FCFS_Scheduler() = default;
     void add_process(Process* p) override;
     Process* get_next_process() override;
-    // void print_readyQ() override;
 };
 
 // ==================== //
@@ -36,7 +34,6 @@ public:
     LCFS_Scheduler() = default;
     void add_process(Process* p) override;
     Process* get_next_process() override;
-    // void print_readyQ() override;
 };
 
 // ==================== //
@@ -49,5 +46,16 @@ public:
     SRTF_Scheduler() = default;
     void add_process(Process* p) override;
     Process* get_next_process() override;
-    // void print_readyQ() override;
+};
+
+// ==================== //
+
+class RR_Scheduler : public Scheduler {
+private:
+    std::deque<Process*> readyQ;
+
+public:
+    RR_Scheduler() = default;
+    void add_process(Process* p) override;
+    Process* get_next_process() override;
 };
