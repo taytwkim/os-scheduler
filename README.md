@@ -23,7 +23,7 @@ How to run the program:
 [-s<schedspec>] scheduler configuration
 ```
 
-Arguments can be in any order.
+Arguments can be provided in any order.
 
 `rfile` is a file containing random numbers. It is used to seed a uniform repeatable behavior.
 
@@ -32,12 +32,12 @@ Scheduling algorithm can be configured:
 ```
 –s [ FLS | R<num> | P<num>[:<maxprio>] | E<num>[:<maxprios>] ]
 
-    F: FCFS
-    L: LCFS
-    S: SRTF
-    R: RR
-    P: PRIO 
-    E: PREPRIO
+    F: FCFS (First Come First Served)
+    L: LCFS (Last Come First Served)
+    S: SRTF (Shorting Remaining Time First)
+    R: RR   (Round Robin)
+    P: PRIO (Priority)
+    E: PREPRIO  (Preemptive Priority)
 
 e.g.,
     ./sched –sR10 -> RR, time quantum = 10
@@ -46,10 +46,12 @@ e.g.,
 
 The `input/` directory contains input files. `refout/` has reference output files. `refout-vp` has verbose reference output files.
 
-```
-scripts/runit.sh myout ./scheduler
-```
+There are scripts for grading.
 
-```
-scripts/gradeit.sh refout-vp myout
+```bash
+# write results to myout
+scripts/runit.sh myout ./scheduler
+
+# compare myout with reference output
+scripts/gradeit.sh refout myout
 ```

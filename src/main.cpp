@@ -53,7 +53,7 @@ int myrandom(int burst)
 
 // Read input file.
 // There is one process per line. 
-// Create a Process object and a CREATED -> READY event.
+// Create a Process object and a "CREATED -> READY" event.
 void parseInputFile()
 {
     std::ifstream file(inputFileName);
@@ -89,7 +89,7 @@ void Simulation()
 {
     int current_timestamp;  // Timestamp of the current event.
 
-    // Needed to account for IO utilization.
+    // Needed to compute IO utilization.
     int num_io = 0;                 // How many processes are currently performing IO.
     int io_start_timestamp = 0;     // Time since at least one process is performing IO.
     int io_busy_time = 0;           // Time where at least one process is performing IO.
@@ -243,6 +243,7 @@ void Simulation()
         }
     }
 
+    // Compute and print final stats
     std::cout << sched_type << "\n";
     
     int cpu_busy_time = 0;
@@ -306,11 +307,20 @@ int main(int argc, char *argv[])
                         SCHEDULER = std::make_unique<FCFS_Scheduler>();
                         break;
                     }
-                    // case 'L': sched_type = LCFS; break;
-                    // case 'S': sched_type = SRTF; break;
+                    case 'L': { 
+                        sched_type = "LCFS";
+                        SCHEDULER = std::make_unique<LCFS_Scheduler>();
+                        break;
+                    }
+                    case 'S': {
+                        sched_type = "SRTF";
+                        SCHEDULER = std::make_unique<SRTF_Scheduler>();
+                        break;
+                    }
                     // case 'R': sched_type = RR; break;
                     // case 'P': sched_type = PRIO; break;
                     // case 'E': sched_type = PREPRIO; break;
+
                     default:
                         std::cerr << "Invalid scheduler type.\n";
                         return EXIT_FAILURE;
