@@ -67,3 +67,52 @@ Process* RR_Scheduler::get_next_process() {
     readyQ.pop_front();
     return p;
 };
+
+// ==================== //
+
+bool PRIO_Scheduler::activeQIsEmpty() {
+    for (int i = 0; i < (int) activeQ.size(); ++i) {
+        if (!activeQ[i].empty()) {
+            return false;
+        }
+    }
+    return true;
+};
+
+bool PRIO_Scheduler::expiredQIsEmpty() {
+    for (int i = 0; i < (int) expiredQ.size(); ++i) {
+        if (!expiredQ[i].empty()) {
+            return false;
+        }
+    }
+    return true;
+};
+
+void PRIO_Scheduler::add_process(Process* p) {
+    if (p->dynamic_prio < 0) {
+        p->dynamic_prio = p->static_prio - 1;
+        expiredQ[p->dynamic_prio].push_back(p);
+        return;
+    }
+
+    activeQ[p->dynamic_prio].push_back(p);
+};
+
+Process* PRIO_Scheduler::get_next_process() {
+    if (activeQIsEmpty()) {
+        if (expiredQIsEmpty()) {
+            return nullptr;
+        }
+        activeQ.swap(expiredQ);
+    }
+
+    for (int i = (int) activeQ.size() - 1; i >= 0; --i) {
+        if (!activeQ[i].empty()) {
+            Process *p = activeQ[i].front();
+            activeQ[i].pop_front();
+            return p;
+        }
+    }
+
+    return nullptr;
+};

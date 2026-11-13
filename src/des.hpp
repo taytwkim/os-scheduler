@@ -20,6 +20,8 @@ enum Transition {
 };
 
 std::string transition_to_string(Transition t);
+
+struct Process;
 struct Event;
 
 class DES {
@@ -31,7 +33,7 @@ public:
     ~DES();
     std::unique_ptr<Event> get_event();
     void put_event(std::unique_ptr<Event> event);
-    // void rm_event();
+    void rm_event(Process *p, int curr_timestamp);
     int get_next_event_timestamp();
-    // void print_eventQ();
+    int get_event_timestamp(Process *p);
 };

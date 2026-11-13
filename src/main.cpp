@@ -118,12 +118,32 @@ void Simulation()
         switch (transition) {
             case CREATED_TO_READY: {
                 SCHEDULER->add_process(proc);
-                call_scheduler = true;
-
+                
                 if (verbose) {
                     std::cout << "CREATED -> READY\n";
                 }
+
+                if (sched_type == "PREPRIO" && CURR_RUNNING_PROCESS) {
+                    bool cond1 = proc->dynamic_prio > CURR_RUNNING_PROCESS->dynamic_prio;
+                    int event_timestamp = SIMULATOR.get_event_timestamp(CURR_RUNNING_PROCESS);
+                    bool cond2 = event_timestamp > current_timestamp;
+
+                    if (verbose) {
+                        std::cout << "    --> PrioPreempt Cond1=" << cond1
+                            << " Cond2=" << cond2
+                            << " (" << event_timestamp - current_timestamp << ") --> "
+                            << (cond1 && cond2 ? "YES" : "NO") << '\n';
+                    }
+
+                    if (cond1 && cond2) {
+                        SIMULATOR.rm_event(CURR_RUNNING_PROCESS, current_timestamp);
+                        SIMULATOR.put_event(std::make_unique<Event>(
+                            CURR_RUNNING_PROCESS, RUNNING_TO_READY, current_timestamp));
+                    }
+                }
                 
+                call_scheduler = true;
+
                 break;
             }
             case RUNNING_TO_READY: {           
@@ -153,8 +173,31 @@ void Simulation()
             }
             case BLOCKED_TO_READY: {
                 proc->io_time = proc->io_time + timeInPrevState;
+                proc->dynamic_prio = proc->static_prio - 1;
                 SCHEDULER->add_process(proc);
-                call_scheduler = true;
+
+                if (verbose) {
+                    std::cout << "BLOCK -> READY\n";
+                }
+
+                if (sched_type == "PREPRIO" && CURR_RUNNING_PROCESS) {
+                    bool cond1 = proc->dynamic_prio > CURR_RUNNING_PROCESS->dynamic_prio;
+                    int event_timestamp = SIMULATOR.get_event_timestamp(CURR_RUNNING_PROCESS);
+                    bool cond2 = event_timestamp > current_timestamp;
+
+                    if (verbose) {
+                        std::cout << "    --> PrioPreempt Cond1=" << cond1
+                            << " Cond2=" << cond2
+                            << " (" << event_timestamp - current_timestamp << ") --> "
+                            << (cond1 && cond2 ? "YES" : "NO") << '\n';
+                    }
+
+                    if (cond1 && cond2) {
+                        SIMULATOR.rm_event(CURR_RUNNING_PROCESS, current_timestamp);
+                        SIMULATOR.put_event(std::make_unique<Event>(
+                            CURR_RUNNING_PROCESS, RUNNING_TO_READY, current_timestamp));
+                    }
+                }
                 
                 // IO is idle.
                 if (num_io == 1) {
@@ -164,9 +207,7 @@ void Simulation()
 
                 --num_io;
 
-                if (verbose) {
-                    std::cout << "BLOCK -> READY\n";
-                }
+                call_scheduler = true;
 
                 break;
             }
@@ -327,6 +368,10 @@ int main(int argc, char *argv[])
                     quantum = std::stoi(q);
                 }
 
+                if (std::getline(ss, second)) {
+                    max_prio = std::stoi(second);
+                }
+                
                 switch (first[0]) {
                     case 'F': {
                         sched_type = "FCFS";
@@ -348,16 +393,20 @@ int main(int argc, char *argv[])
                         SCHEDULER = std::make_unique<RR_Scheduler>();
                         break;
                     }
-                    // case 'P': sched_type = PRIO; break;
-                    // case 'E': sched_type = PREPRIO; break;
+                    case 'P': {
+                        sched_type = "PRIO";
+                        SCHEDULER = std::make_unique<PRIO_Scheduler>(max_prio);
+                        break;
+                    }
+                    case 'E': {
+                        sched_type = "PREPRIO";
+                        SCHEDULER = std::make_unique<PRIO_Scheduler>(max_prio);
+                        break;
+                    }
 
                     default:
                         std::cerr << "Invalid scheduler type.\n";
                         return EXIT_FAILURE;
-                }
-
-                if (std::getline(ss, second)) {
-                    max_prio = std::stoi(second);
                 }
 
                 break;

@@ -1,6 +1,5 @@
 #include "des.hpp"
 
-#include <iostream>
 #include <utility>
 
 #include "event.hpp"
@@ -40,19 +39,27 @@ void DES::put_event(std::unique_ptr<Event> event) {
     eventQ.insert(it, std::move(event));
 }
 
-// void DES::rm_event() {
+void DES::rm_event(Process *p, int curr_timestamp) {
+    auto it = eventQ.begin();
 
-// }
+    while (it != eventQ.end()) {
+        if ((*it)->proc == p && curr_timestamp < (*it)->timestamp) {
+            eventQ.erase(it);
+            return;
+        }
+        ++it;
+    }
 
-// void DES::print_eventQ() {
-//     std::cout << "Printing eventQ:\n";
-//     auto it = eventQ.begin();
+}
 
-//     while (it != eventQ.end()){
-//         std::cout << (*it)->to_string() << "\n";
-//         ++it;
-//     }
-// }
+int DES::get_event_timestamp(Process *p) {
+    for (const auto& event : eventQ) {
+        if (event->proc == p) {
+            return event->timestamp;
+        }
+    }
+    return -1;
+}
 
 int DES::get_next_event_timestamp() {
     if (eventQ.empty()) {

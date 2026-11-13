@@ -55,3 +55,20 @@ scripts/runit.sh myout ./scheduler
 # compare myout with reference output
 scripts/gradeit.sh refout myout
 ```
+
+Expected result:
+
+```
+in    F    L    S   R2   R5   P2   P5:3 E2:5  E4
+00    1    1    1    1    1    1    1    1    1
+01    1    1    1    1    1    1    1    1    1
+02    1    1    1    1    1    1    1    1    1
+03    1    1    1    1    1    1    1    1    1
+04    1    1    1    1    1    1    1    1    1
+05    1    1    1    1    1    1    1    1    1
+06    1    1    1    1    1    1    1    1    1
+07    1    1    1    1    1    1    1    1    1
+
+SUM   8    8    8    8    8    8    8    8    8 
+72 out of 72 correct
+```

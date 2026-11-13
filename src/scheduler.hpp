@@ -59,3 +59,19 @@ public:
     void add_process(Process* p) override;
     Process* get_next_process() override;
 };
+
+// ==================== //
+
+class PRIO_Scheduler : public Scheduler {
+private:
+    std::vector<std::deque<Process*>> activeQ;
+    std::vector<std::deque<Process*>> expiredQ;
+    bool activeQIsEmpty();
+    bool expiredQIsEmpty();
+
+public:
+    PRIO_Scheduler(int levels)
+        : activeQ(levels), expiredQ(levels) {}
+    void add_process(Process* p) override;
+    Process* get_next_process() override;
+};
