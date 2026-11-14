@@ -1,5 +1,5 @@
 CXX = clang++
-CXXFLAGS = -g -O0 -Wall
+CXXFLAGS = -O0 -Wall
 
 scheduler: src/*.cpp
 	$(CXX) $(CXXFLAGS) src/*.cpp -o scheduler
