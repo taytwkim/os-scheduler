@@ -4,6 +4,7 @@
 #include <memory>
 #include <string>
 
+// A process can be in one of these states.
 enum State {
     CREATED,
     READY,
@@ -33,7 +34,14 @@ public:
     ~DES();
     std::unique_ptr<Event> get_event();
     void put_event(std::unique_ptr<Event> event);
-    void rm_event(Process *p, int curr_timestamp);
+    
+    // Remove a scheduled event for the process.
+    // There can be one scheduled event for each process,
+    // in most cases, it will be RUNNING->BLOCKED or RUNNING->READY.
+    void rm_event(Process *p);
+
     int get_next_event_timestamp();
+
+    // Get timestamp of the scheduled event for the process.
     int get_event_timestamp(Process *p);
 };

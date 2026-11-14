@@ -39,11 +39,11 @@ void DES::put_event(std::unique_ptr<Event> event) {
     eventQ.insert(it, std::move(event));
 }
 
-void DES::rm_event(Process *p, int curr_timestamp) {
+void DES::rm_event(Process *p) {
     auto it = eventQ.begin();
 
     while (it != eventQ.end()) {
-        if ((*it)->proc == p && curr_timestamp < (*it)->timestamp) {
+        if ((*it)->proc == p) {
             eventQ.erase(it);
             return;
         }

@@ -14,7 +14,7 @@ Process* FCFS_Scheduler::get_next_process() {
     return p;
 };
 
-// ==================== //
+// ======================================== //
 
 void LCFS_Scheduler::add_process(Process* p) {
     readyQ.push_back(p);
@@ -30,12 +30,14 @@ Process* LCFS_Scheduler::get_next_process() {
     return p;
 };
 
-// ==================== //
+// ======================================== //
 
 void SRTF_Scheduler::add_process(Process* p) {
     auto it = readyQ.begin();
 
-    while (it != readyQ.end() && (*it)->remaining_cpu_time <= p->remaining_cpu_time) {
+    while (it != readyQ.end() && 
+        (*it)->remaining_cpu_time <= p->remaining_cpu_time)
+    {
         ++it;
     }
 
@@ -52,23 +54,7 @@ Process* SRTF_Scheduler::get_next_process() {
     return p;
 };
 
-// ==================== //
-
-void RR_Scheduler::add_process(Process* p) {
-    readyQ.push_back(p);
-};
-
-Process* RR_Scheduler::get_next_process() {
-    if (readyQ.empty()) {
-        return nullptr;
-    }
-
-    Process *p = readyQ.front();
-    readyQ.pop_front();
-    return p;
-};
-
-// ==================== //
+// ======================================== //
 
 bool PRIO_Scheduler::activeQIsEmpty() {
     for (int i = 0; i < (int) activeQ.size(); ++i) {

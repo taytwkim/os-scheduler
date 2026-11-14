@@ -2,7 +2,6 @@
 
 #include "process.hpp"
 #include "des.hpp"
-#include <string>
 
 struct Event {
     Process *proc;
@@ -13,10 +12,4 @@ struct Event {
         : proc(proc),
           transition(transition),
           timestamp(timestamp) {}
-    
-    std::string to_string() const {
-        return "Process: " + std::to_string(proc->pid) + " ; " +
-               "Transition: " + transition_to_string(transition) + " ; " +
-               "Timestamp: " + std::to_string(timestamp);
-    }
 };

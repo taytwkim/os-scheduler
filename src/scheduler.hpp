@@ -12,7 +12,7 @@ public:
     virtual Process* get_next_process() = 0;
 };
 
-// ==================== //
+// ======================================== //
 
 class FCFS_Scheduler : public Scheduler {
 private:
@@ -24,7 +24,7 @@ public:
     Process* get_next_process() override;
 };
 
-// ==================== //
+// ======================================== //
 
 class LCFS_Scheduler : public Scheduler {
 private:
@@ -36,7 +36,7 @@ public:
     Process* get_next_process() override;
 };
 
-// ==================== //
+// ======================================== //
 
 class SRTF_Scheduler : public Scheduler {
 private:
@@ -48,19 +48,7 @@ public:
     Process* get_next_process() override;
 };
 
-// ==================== //
-
-class RR_Scheduler : public Scheduler {
-private:
-    std::deque<Process*> readyQ;
-
-public:
-    RR_Scheduler() = default;
-    void add_process(Process* p) override;
-    Process* get_next_process() override;
-};
-
-// ==================== //
+// ======================================== //
 
 class PRIO_Scheduler : public Scheduler {
 private:

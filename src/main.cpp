@@ -18,12 +18,12 @@ DES SIMULATOR;
 std::vector<std::unique_ptr<Process>> PROCESSES;
 Process *CURR_RUNNING_PROCESS;
 
+std::string sched_type;
 int quantum = 10000;    // default
 int max_prio = 4;       // default
 char *inputFileName;
 char *randFileName;
 bool verbose = false;
-std::string sched_type;
 
 std::vector<int> randVals; 
 int numRandVals;
@@ -95,10 +95,9 @@ void Simulation()
     int io_start_timestamp = 0;     // Time since at least one process is performing IO.
     int io_busy_time = 0;           // Time where at least one process is performing IO.
 
-    // We first look at the next event.
+    // We first process the next event.
     // Some events set call_scheduler to true
-    // so that the scheduler can decide whether to
-    // schedule a new process.
+    // so that the scheduler can schedule a new process.
     bool call_scheduler = false;
 
     while (auto evt = SIMULATOR.get_event()) {
@@ -125,6 +124,9 @@ void Simulation()
 
                 if (sched_type == "PREPRIO" && CURR_RUNNING_PROCESS) {
                     bool cond1 = proc->dynamic_prio > CURR_RUNNING_PROCESS->dynamic_prio;
+
+                    // The current running process could have a pending event now.
+                    // If so, don't preempt it. It will be blocked anyway.
                     int event_timestamp = SIMULATOR.get_event_timestamp(CURR_RUNNING_PROCESS);
                     bool cond2 = event_timestamp > current_timestamp;
 
@@ -136,7 +138,9 @@ void Simulation()
                     }
 
                     if (cond1 && cond2) {
-                        SIMULATOR.rm_event(CURR_RUNNING_PROCESS, current_timestamp);
+                        SIMULATOR.rm_event(CURR_RUNNING_PROCESS);
+
+                        // Preempt current running process.
                         SIMULATOR.put_event(std::make_unique<Event>(
                             CURR_RUNNING_PROCESS, RUNNING_TO_READY, current_timestamp));
                     }
@@ -146,7 +150,7 @@ void Simulation()
 
                 break;
             }
-            case RUNNING_TO_READY: {           
+            case RUNNING_TO_READY: {
                 CURR_RUNNING_PROCESS = nullptr;
 
                 proc->remaining_cpu_time -= timeInPrevState;
@@ -163,6 +167,8 @@ void Simulation()
                 proc->dynamic_prio--;
 
                 if (sched_type == "RR") {
+                    // Round Robin doesn't really use priority
+                    // so reset it.
                     proc->dynamic_prio = proc->static_prio - 1;
                 };
 
@@ -193,7 +199,7 @@ void Simulation()
                     }
 
                     if (cond1 && cond2) {
-                        SIMULATOR.rm_event(CURR_RUNNING_PROCESS, current_timestamp);
+                        SIMULATOR.rm_event(CURR_RUNNING_PROCESS);
                         SIMULATOR.put_event(std::make_unique<Event>(
                             CURR_RUNNING_PROCESS, RUNNING_TO_READY, current_timestamp));
                     }
@@ -222,10 +228,12 @@ void Simulation()
                 }
 
                 if (proc->curr_cpu_burst > quantum) {
+                    // Create event for preemption.
                     SIMULATOR.put_event(std::make_unique<Event>(
                         proc, RUNNING_TO_READY, current_timestamp + quantum));
                 }
                 else {
+                    // Create event for blocking.
                     SIMULATOR.put_event(std::make_unique<Event>(
                         proc, RUNNING_TO_BLOCKED, current_timestamp + proc->curr_cpu_burst));
                 }
@@ -304,7 +312,7 @@ void Simulation()
         }
     }
 
-    // Compute and print final stats
+    // Aggregate and print final stats
     std::cout << sched_type;
     
     if (quantum < 10000) {
@@ -390,7 +398,7 @@ int main(int argc, char *argv[])
                     }
                     case 'R': {
                         sched_type = "RR";
-                        SCHEDULER = std::make_unique<RR_Scheduler>();
+                        SCHEDULER = std::make_unique<FCFS_Scheduler>();
                         break;
                     }
                     case 'P': {
@@ -425,20 +433,9 @@ int main(int argc, char *argv[])
 
     inputFileName = argv[optind];
     randFileName = argv[optind+1];
-
-    // std::cout << "Options: \n"
-    //           << "Scheduler: " << std::to_string(sched_type) << "\n"
-    //           << "Quantum: " << std::to_string(quantum) << "\n"
-    //           << "Max Prio: " << std::to_string(max_prio) << "\n"
-    //           << "Input File Name: " << inputFileName << "\n"
-    //           << "Rand File Name: " << randFileName << "\n"
-    //           << "Verbose: " << std::to_string(verbose) << "\n";
     
     parseRandomFile();
     parseInputFile();
-
-    // SCHEDULER->print_readyQ();
-    // Simulator.print_eventQ();
 
     Simulation();
     
